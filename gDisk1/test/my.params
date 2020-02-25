@@ -1,0 +1,135 @@
+% Example compile-time options:
+%  (HYDRO_MESHLESS_FINITE_MASS is optional, replace with your
+%   choice of hydro/mhd options)
+%
+%        HYDRO_MESHLESS_FINITE_MASS
+%        BOX_SPATIAL_DIMENSION=2
+%        SELFGRAVITY_OFF 
+%        GRAVITY_ANALYTIC
+%        EOS_GAMMA=(7.0/5.0)
+%        ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+%
+% Make sure you go into the file gravity/analytic_gravity.h and un-comment the line:
+%
+%  //GravAccel_KeplerianTestProblem(); // keplerian disk with boundaries for test problem
+%
+% within the routine “add_analytic_gravitational_forces”. Otherwise the code won’t know 
+% what to use for the analytic gravitational forces.
+%
+
+%---- Desired simulation beginning and end times (in code units) for run
+TimeBegin   0.   % Beginning of the simulation
+TimeMax     50     % End of the simulation
+%---- Output frequency 
+TimeOfFirstSnapshot     0  % time (code units) of first snapshot
+TimeBetSnapshot         0.1  % time between (if OutputListOn=0), code units
+TimeBetStatistics       0.01 % time between additional statistics (e.g. energy)
+
+%---- System of units
+HubbleParam                        1     % h
+UnitLength_in_cm            1.496e13     % 1 AU/h    
+UnitMass_in_g               1.989e33     % 1.0 solar masses/h          
+UnitVelocity_in_cm_per_s    474318.3259  % s.t. time unit is 1 yr, = 1.496e13 / 3.154e7     %5692541.857  % 1 month
+UnitMagneticField_in_gauss  1.0          % 1 gauss
+GravityConstantInternal     39.4429      % calculated by code if =0; = 6.6743e-11*1.989e30/(1.496e11*((1.496e13/3.154e7)/100)**2) %1.83e-12
+% h = H0 / (100 km/s/Mpc) = HubbleParam = (params.txt default = 0.7)  
+% MASS_code = UnitMass_in_g / h = 1.0 solar masses/h (params.txt default = 10^10 h^-1 M_sun)  
+% LENGTH_code = UnitLength_in_cm / h = 1 AU/h (params.txt default = 1 h^-1 kpc)  
+% VELOCITY_code = UnitVelocity_in_cm_per_s = 1 m/sec (params.txt default = 1 km/s)  
+% TIME_code = LENGTH_code/VELOCITY_code =  3.154e7 sec ~ 1 yr  (params.txt default = 0.978 h^-1 Gyr)  
+% INTERNAL ENERGY_code = VELOCITY_code^2 =  (params.txt default = (km/s)^2)  
+% DENSITY_code = MASS_code/(LENGTH_code^3) = M_sun/(1 AU)^3 = 5.94e10-7 g/cm^3  (params.txt default = 6.77e-22 h^-2 g/cm^3)  
+% MAGNETIC_FIELD_code = UnitMagneticField_in_gauss = (params.txt default = 1 Gauss)  
+% DIVERGENCE_DAMPING_FIELD_code = MAGNETIC_FIELD_code * VELOCITY_code
+% GravityConstantInternal = 6.6743e-11*(UnitMass_in_g/1000)/(UnitLength_in_cm/100*(UnitVelocity_in_cm_per_s/100)**2)
+
+%---- Hydro reconstruction (kernel) parameters
+DesNumNgb               32      % domain-reconstruction kernel number: 32 standard, 60-114 for quintic
+MaxHsml                 2000  % minimum gas kernel length (some very large value to prevent errors)
+MinGasHsmlFractional    0       % minimum kernel length relative to gas force softening (<= 1)
+
+%---- (Optional) Initial hydro temperature & temperature floor (in Kelvin)
+InitGasTemp     0    % set by IC file if =0
+MinGasTemp      0    % don't set <10 in explicit feedback runs, otherwise 0
+
+%----  Relevant files (filenames and directories)
+InitCondFile                       ./ics
+OutputDir                          output
+
+%---- File formats (input and output)
+ICFormat    3  % 1=unformatted (gadget) binary, 3=hdf5, 4=cluster
+SnapFormat  3  % 1=unformatted (gadget) binary, 3=hdf5
+
+%---- Output parameters 
+RestartFile                 restart 
+SnapshotFileBase            snapshot 
+OutputListOn                0  % =1 to use list in "OutputListFilename" 
+OutputListFilename          output_times.txt  % list of times (in code units) for snaps
+NumFilesPerSnapshot         1
+NumFilesWrittenInParallel   1  % must be < N_processors & power of 2
+
+%---- CPU run-time and checkpointing time-limits
+TimeLimitCPU            100000  % in seconds
+CpuTimeBetRestartFile   7200  	% in seconds 
+ResubmitOn              0 
+ResubmitCommand         my-scriptfile 
+
+%----- Memory allocation
+MaxMemSize          1600    % sets maximum MPI process memory use in MByte
+PartAllocFactor     5.0     % memory load allowed for better cpu balance
+BufferSize          100     % in MByte
+%---- Rebuild domains when >this fraction of particles active  
+TreeDomainUpdateFrequency    0.005  % 0.0005-0.05, dept on core+particle number 
+
+%---- Cosmological parameters
+ComovingIntegrationOn   0       % is it cosmological? (yes=1, no=0)
+BoxSize                 100  % in code units
+Omega0                  0    % =0 for non-cosmological
+OmegaLambda             0    % =0 for non-cosmological
+OmegaBaryon             0   % =0 for non-cosmological
+
+%---- Maximum and minimum timesteps allowed
+MaxSizeTimestep         0.01   % in code units, set for your problem
+MinSizeTimestep         1.0e-12 % set this very low, or get the wrong answer
+
+
+%--- Developer-Mode Parameters (usually hard-coded, but set manually if DEVELOPER_MODE is on) --------  
+ErrTolTheta                  0.7    % 0.7=standard  
+ErrTolForceAcc               0.0025 % 0.0025=standard  
+ErrTolIntAccuracy        0.002  % <0.02  
+CourantFac               0.025    % <0.20  
+MaxRMSDisplacementFac    0.125  % <0.25  
+MaxNumNgbDeviation      0.1    % <<DesNumNgb (values<1 are fine)  
+%AGS_MaxNumNgbDeviation  0.10  % tolerance in Nngb (make larger than gas) 
+
+%---------- SPH-Specific Developer-Mode Parameters ---------------------------------  
+%---- Artificial viscosity  
+ArtBulkViscConst    1.0     % multiplies 'standard' AV (use 1.0)  
+
+
+%---- Gravitational softening lengths 
+%----- Softening lengths per particle type. If ADAPTIVE_GRAVSOFT is set, these  
+%-------- are the minimum softening allowed for each type ------- 
+%-------- (units are co-moving for cosmological integrations)
+%-the particles of the first type (‘Gas’) are indeed treated as hydro particles, 
+%-i.e. they receive an additional hydrodynamic acceleration, 
+%-and their internal energy per unit mass is evolved as independent thermodynamic variable.
+SofteningGas    0.05    % gas (particle type=0) (in co-moving code units)
+SofteningHalo   0.07    % dark matter/collisionless particles (type=1)
+SofteningDisk   0.003    % collisionless particles (type=2)
+SofteningBulge  0.003    % collisionless particles (type=3)
+SofteningStars  0.003    % stars spawned from gas (type=4)
+SofteningBndry  0.003    % black holes (if active), or collisionless (type=5)
+%---- if these are set in cosmo runs, SofteningX switches from comoving to physical
+%------- units when the comoving value exceeds the choice here
+%------- (these are ignored, and *only* the above are used, for non-cosmo runs)
+SofteningGasMaxPhys     0.05  % e.g. switch to 0.5pc physical below z=1
+SofteningHaloMaxPhys    0.07
+SofteningDiskMaxPhys    0.003
+SofteningBulgeMaxPhys   0.003
+SofteningStarsMaxPhys   0.003 
+SofteningBndryMaxPhys   0.003
+%----- parameters for adaptive gravitational softening 
+%AGS_DesNumNgb           32  % neighbor number for calculating adaptive gravsoft
+
+
