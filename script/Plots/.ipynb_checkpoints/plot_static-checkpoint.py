@@ -54,7 +54,7 @@ class plot_single:
         self.vel_mag = (self.velx**2 + self.vely**2 + self.velz**2)**0.5
         self.Omega_K = (self.GravityConstantInternal*self.m_star/self.rad**3)**0.5
         
-        #self.dens = f['PartType0']['Density'][:]
+        self.dens = f['PartType0']['Density'][:]
         
         self.intE = f['PartType0']['InternalEnergy'][:]
         self.temp = (self.mean_molecular_weight/self.k_B) * (self.gamma_eos-1) * self.intE  
