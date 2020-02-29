@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "make_IC.py", line 285, in <module>
+    make_IC()
+  File "make_IC.py", line 87, in make_IC
+    result = list(metropolis_sampler(rho, Ngas));       result = np.array(result)
+  File "make_IC.py", line 79, in metropolis_sampler
+    acceptance_r = p(trial_r, z)/p(r, z)
+  File "make_IC.py", line 64, in rho
+    rho_0 = Sigma(r)/(vertical_scale_h(r)*(2*np.pi)**0.5)
+  File "make_IC.py", line 42, in Sigma
+    res[(r < r_i) | (r > r_o)] = 0
+TypeError: 'float' object does not support item assignment
