@@ -151,7 +151,8 @@ def make_IC():
     # equation 24 from Armitage "Physical Processes in Protoplanetary disks"
     #v_phi = v_K*(1-(11/4)*AspectRatio(r_g)**2)**0.5
     #v_phi += (2*np.pi+G*Sigma(r_g)*r_g)**0.5
-    Omega = vO_K(r_g)*(0.5 + 0.5*r_g/(r_g**2+z_g**2)**0.5 - 11/4 * vAR(r_g)**2)**0.5
+    # see https://arxiv.org/pdf/1102.0671.pdf
+    Omega = vOK(r_g)*((1+q) - q*r_g/(r_g**2+z_g**2)**0.5 + (p-(3+q)/2+q) * vAR(r_g)**2)**0.5
     vx_g=-Omega*(yv_g-b);     vy_g=Omega*(xv_g-a);      vz_g=0.*zv_g;
     
     # set the initial velocity in x/y/z direction = (-Omega * r_y, Omega*r_y, 0)

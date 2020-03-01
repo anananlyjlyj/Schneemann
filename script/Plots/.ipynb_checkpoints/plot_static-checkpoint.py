@@ -34,7 +34,7 @@ class plot_single:
         # G = 6.6743e-11 m3 kg-1 s-2 *(UnitMass_in_g/1000)/(UnitLength_in_cm/100*(UnitVelocity_in_cm_per_s/100)**2)
         self.k_B = 1.38064852e-23/((self.UnitVelocity_in_cm_per_s/100)**2 * (self.UnitMass_in_g/1000))   # 1.38064852e-23 m2 kg s-2 K-1
         self.proton_mass = 1.6726219e-27/(self.UnitMass_in_g/1000);                 self.mean_molecular_weight = self.mu*self.proton_mass
-        self.r_i = 5.;   self.r_o = 20.;  self.m_disk = 0.1
+        self.r_i = 5.0;   self.r_o = 20.;  self.m_disk = 0.1
         self.star = [50, 50, 50];  self.m_star = 1
         self.Sigma_0 = self.m_disk/(2*np.pi*(self.r_o-self.r_i));      self.power = -1
 
@@ -68,6 +68,14 @@ class plot_single:
         
         self.Omega_K_10AU = (self.GravityConstantInternal*self.m_star/10**3)**0.5; self.vel_10AU = self.Omega_K_10AU * 10
         self.Omega_dimless = self.Omega_K/self.Omega_K_10AU;    self.vel_dimless = self.vel_mag/self.vel_10AU
+        
+    def init_cond(self, r, qnty):
+        if qnty is "surfDen":
+            res = self.Sigma_0*r**self.power
+            res[(r > self.r_o) | (r < self.r_i)] = 0
+        if qnty is "dens":
+            res = 0
+        return res
         
     def scatter_qty(self, face, qty = None):
         fig = plt.figure(figsize=(10,8))
@@ -108,6 +116,23 @@ class plot_single:
     def qty_qty(self, qty1, qty2):
         plt.figure(figsize=(10,10))
         plt.scatter(getattr(self, qty1), getattr(self, qty2))
+        if qty2 is "dens" and qty1 is "rad":
+            def midp(r):
+                Q_for_normalize = 2         # Q = c_s*Omega/(np.pi*G*Sigma), normalised s.t. Q(r=r_o) = Q_for_normalize 
+
+                Sigma_0 = 0.1/(2*np.pi*(20-5))
+                r_o = 20; r_i = 5
+                def Temp(r):
+                    res = (Q_for_normalize*np.pi*G*Sigma_0/r_o)**2/((k_B*r_o**(-0.5)/mean_molecular_weight)*(G*0.1/r_o**3)) * r**(-0.5)/100
+                    res[(r < r_i) | (r > r_o)] = 200/10
+                    return res
+                def c_s(r):                 # speed of sound
+                    return (k_B * Temp(r)/mean_molecular_weight)**0.5     
+                def Omega_K(r):             # Keplerian angular speed
+                    return (G*0.1/r**3)**0.5 
+                def vertical_scale_h(r):
+                    return c_s(r) / Omega_K(r)
+                return Sigma_0/r/(vertical_scale_h(r)*(2*np.pi)**0.5)
         plt.title(qty2+" vs "+qty1+" of t = %.1f"%(self.time) + "s (snapshot "+self.fname+")")
         #ax.xaxis.set_minor_locator(MultipleLocator(5))
         plt.xlabel(qty1);          plt.ylabel(qty2)
@@ -116,8 +141,8 @@ class plot_single:
         plt.close()
         
     def grid_qty(self, qty, what):
-        n = 200; m = 200;       eps_rad = 21/n;  eps_phi = 2*np.pi/m
-        grid_rad = np.arange(0.1, 30, eps_rad);  grid_phi = np.arange(-np.pi, np.pi, eps_phi)
+        n = 200; m = 200;       eps_rad = (self.r_o*1.2-self.r_i*0.8)/n;  eps_phi = 2*np.pi/m
+        grid_rad = np.arange(self.r_i*0.8, self.r_o*1.2, eps_rad);  grid_phi = np.arange(-np.pi, np.pi, eps_phi)
         grid = (np.array(np.meshgrid(grid_rad, grid_phi)).T.reshape(-1,2))
         grid_x = np.multiply(grid[:,0], np.cos(grid[:,1])).ravel();  grid_y = np.multiply(grid[:,0], np.sin(grid[:,1])).ravel()
         
@@ -152,19 +177,14 @@ class plot_single:
         else:
             res = [grid_qty(qty, i, j) for i, j in grid]
 
-        def Sigma_init(r):
-            res = self.Sigma_0 * r**self.power
-            res[(r > self.r_o) | (r < self.r_i)] = 0
-            return res
-
         plt.figure(figsize = (10, 8))
         if what is "radial":
             res_avg = [sum(res[i:i+m])/m for i in range(0, len(res), m)]
             plt.plot(grid_rad, res_avg, "rx", label = "averaged by radius")
             plt.scatter(grid[:,0], res, s = 5.0, label = "measured by cells")
             if qty is "surfDen":
-                plt.plot(grid_rad, Sigma_init(grid_rad), 'y', linewidth = 3, label = "expected initial condition")
-            xmax = 25; xmin = 4; ymax = np.max(res); ymin = np.min(res)
+                plt.plot(grid_rad, self.init_cond(grid_rad, "surfDen"), 'y', linewidth = 3, label = "expected initial condition")
+            xmax = self.r_o; xmin = self.r_i; ymax = np.max(res); ymin = np.min(res)
             plt.xlim(xmin-0.1*(xmax-xmin),xmax+0.1*(xmax-xmin));         plt.ylim(ymin-0.1*(ymax-ymin),ymax+0.1*(ymax-ymin))
             plt.legend()
             plt.xlabel("radius");          plt.ylabel("Surface Density (M_sun / AU^2)")
