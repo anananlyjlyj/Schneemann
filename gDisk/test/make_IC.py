@@ -22,33 +22,36 @@ def make_IC():
     ########################### units set in parameter file #########################    
     G = GravityConstantInternal #39.4429 # G = 6.6743e-11*(UnitMass_in_g/1000)/(UnitLength_in_cm/100*(UnitVelocity_in_cm_per_s/100)**2)
     gamma_eos = 1.001#5./3.           # polytropic index of ideal equation of state the run will assume
-    k_B = (1.38064852e-23/((UnitVelocity_in_cm_per_s)/100)**2 / (UnitMass_in_g/1000))   # 1.38064852e-23 m2 kg s-2 K-1
+    k_B = 1.38064852e-23/(((UnitVelocity_in_cm_per_s)/100)**2 * (UnitMass_in_g/1000))   # 1.38064852e-23 m2 kg s-2 K-1
     mu = 2.3;   proton_mass = 1.6726219e-27/(UnitMass_in_g/1000);   mean_molecular_weight = mu*proton_mass
     
     ########################### physical setup ######################################
-    M = 1                       # mass of central star
+    M = 1.0                     # mass of central star
     a = 50; b = 50; c = 50      # position of central star 
     M_disk = 0.1                # toaal mass of disk
-    r_o = 20.0;   r_i = 5    # disc outer & inner radius;
+    r_o = 20.0;   r_i = 5.0     # disc outer & inner radius;
     Ngas = 250000
     
     ########################### initial profile setup ###############################
     # in the following: cylindical coordinate, r**2 = x**2 + y**2
-    # Surface density \propto r**(-p) ===============================================
-    r_power = -1;     Sigma_0 = M_disk/(2*np.pi*(r_o-r_i))  # Sigma_0 = Sigma(r = 1 AU) 
-    # \int{\Sigma dA} = \int{\Sigma_0 * (1/r)^p * (2*pi*r*dr)} = M_disk -> determine \Sigma_0
+    # Surface density \propto (r/r0)**p =============================================
+    p = -1;     Sigma_0 = M_disk*(p+2) /(2.0*np.pi)/((r_o/r0)**(p+2)-(r_i/r0)**(p+2))  # Sigma_0 = Sigma(r = r0) 
+    # \int{\Sigma dA} = \int{\Sigma_0 * r^p * (2*pi*r*dr)} = M_disk -> determine \Sigma_0
     def Sigma(r):
-        res = Sigma_0 * r**r_power
-        res[(r < r_i) | (r > r_o)] = 0
-        return res
+        if r < r_i or r > r_o:
+            return 0
+        return Sigma_0 * (r/r0)**p
+    vSigma = np.vectorize(Sigma)
     
-    # Temperature \propto r**(-0.5) =================================================
+    # Temperature \propto (r/r0)**q ==================================================
     Q_for_normalize = 2         # Q = c_s*Omega/(np.pi*G*Sigma), normalised s.t. Q(r=r_o) = Q_for_normalize 
-    T_power = -0.5
+    q = -0.5
     def Temp(r):
-        res = (Q_for_normalize*np.pi*G*Sigma(r_o)/Omega_K(r_o))**2/(k_B*r_o**T_power/mean_molecular_weight) * r**T_power #/100
-        res[(r < r_i) | (r > r_o)] = 200
+        if r < r_i or r > r_o:
+            return 200
+        res = (Q_for_normalize*np.pi*G*Sigma(r_o)/Omega_K(r_o))**2/(k_B*(r_o/r0)**q/mean_molecular_weight) * (r/r0)**q #/100
         return res
+    vT = np.vectorize(Temp)
     
     # vertical structure of the disk h = r * AspectRatio as a Gaussian ==============
     def c_s(r):                 # speed of sound
@@ -59,6 +62,7 @@ def make_IC():
         return c_s(r) / Omega_K(r)
     def AspectRatio(r):         # for verification: representative value = 0.05
         return vertical_scale_h(r)/r
+    vO_K = np.vectorize(Omega_K); vh = np.vectorize(vertical_scale_h); vAR = np.vectorize(AspectRatio)
     
     def rho(r, z):
         rho_0 = Sigma(r)/(vertical_scale_h(r)*(2*np.pi)**0.5)
@@ -68,6 +72,15 @@ def make_IC():
         return c_s(r)*Omega_K(r)/(np.pi*G*Sigma(r))
     
     ########################### initial coordinate ##################################
+    # --- cylindical shell method ---
+    def Mshell_intg(r):
+        return ((r/r0)**(p+2)) /(p+2) * Sigma_0 * 2 * np.pi *r0
+    # radii of particles are inverse function of Mshell_intg
+    r_g = r0 * np.exp(np.log((p+2.0)*(Mshell_intg(r_i)+(Mshell_intg(r_o)-Mshell_intg(r_i))*np.random.uniform(0, 1, Ngas))/(2*np.pi*r0*Sigma_0))/(p+2.0))
+    z_g = vertical_scale_h(r0) * (r_g/r0)**((3+q)/2) * np.random.normal(0, 1, Ngas)
+    phi_g =  np.random.uniform(-np.pi, np.pi, Ngas)   # randomrized by pdf = uniform distribution
+    xv_g = r_g*np.cos(phi_g) + a;   yv_g = r_g*np.sin(phi_g) + b;   zv_g = z_g + c
+    '''
     # --- acceptance method: ---
     # see https://stackoverflow.com/questions/51050658/
     def uniform_proposal(x, delta=2.0):
@@ -89,7 +102,7 @@ def make_IC():
     r_g = result[:,0];     z_g = result[:,1]   
     phi_g =  np.random.uniform(-np.pi, np.pi, Ngas)   # randomrized by pdf = uniform distribution
     xv_g = r_g*np.cos(phi_g) + a;   yv_g = r_g*np.sin(phi_g) + b;   zv_g = z_g + c
-    '''
+    
     # ---meshgrid method: ----
     # (x, y, z)
     #create meshgrid:
@@ -138,7 +151,7 @@ def make_IC():
     # equation 24 from Armitage "Physical Processes in Protoplanetary disks"
     #v_phi = v_K*(1-(11/4)*AspectRatio(r_g)**2)**0.5
     #v_phi += (2*np.pi+G*Sigma(r_g)*r_g)**0.5
-    Omega = Omega_K(r_g)*(0.5 + 0.5*r_g/(r_g**2+z_g**2)**0.5 - 11/4 * AspectRatio(r_g)**2)**0.5
+    Omega = vO_K(r_g)*(0.5 + 0.5*r_g/(r_g**2+z_g**2)**0.5 - 11/4 * vAR(r_g)**2)**0.5
     vx_g=-Omega*(yv_g-b);     vy_g=Omega*(xv_g-a);      vz_g=0.*zv_g;
     
     # set the initial velocity in x/y/z direction = (-Omega * r_y, Omega*r_y, 0)
@@ -148,7 +161,7 @@ def make_IC():
     # set the initial internal energy per unit mass. recall gizmo uses this as the initial 'temperature' variable
     #  this can be overridden with the InitGasTemp variable (which takes an actual temperature)
     #uv_g=P_desired/((gamma_eos-1.)*rho_desired)
-    uv_g = k_B * Temp(r_g)/(mean_molecular_weight*(gamma_eos-1))
+    uv_g = k_B * vT(r_g)/(mean_molecular_weight*(gamma_eos-1))
     
     
     ############################ initial magnetic field ################################    

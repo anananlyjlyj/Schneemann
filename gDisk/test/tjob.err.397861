@@ -10,3 +10,6 @@ Traceback (most recent call last):
   File "make_IC.py", line 42, in Sigma
     res[(r < r_i) | (r > r_o)] = 0
 TypeError: 'float' object does not support item assignment
+srun: Job step aborted: Waiting up to 62 seconds for job step to finish.
+slurmstepd: error: *** JOB 397861 ON isaac080 CANCELLED AT 2020-02-29T23:08:23 ***
+slurmstepd: error: *** STEP 397861.0 ON isaac080 CANCELLED AT 2020-02-29T23:08:23 ***
