@@ -230,6 +230,7 @@ void GravAccel_GrowingDiskPotential()
 void GravAccel_KeplerianOrbit()
 {
     double G = 39.4429;
+    double M = 1.0;
     double a = 50.0; double b = 50.0; double c = 50.0;  // postion of the central star
     /*int i,k; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -248,38 +249,36 @@ void GravAccel_KeplerianOrbit()
     }*/
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        double r = pow(pow(P[i].Pos[2]-c,2.)+pow(P[i].Pos[1]-b,2.)+pow(P[i].Pos[0]-a,2.),0.5);
         double rx = P[i].Pos[0]-a;
         double ry = P[i].Pos[1]-b;
         double rz = P[i].Pos[2]-c;
-        if((r > 0.15))//&(r < 25.1))
+        double r = pow(pow(rx, 2.) + pow(ry, 2.), 0.5);
+        double d = pow(pow(rx, 2.) + pow(ry, 2.) + pow(rz,2.), 0.5);
+        if((r > 0.35))
         {
-            P[i].GravAccel[0] -= rx / pow(r,3) ;
-            P[i].GravAccel[1] -= ry / pow(r,3) ;
-            P[i].GravAccel[2] -= rz / pow(r,3) ;
+            P[i].GravAccel[0] -= rx / pow(d,3) ;
+            P[i].GravAccel[1] -= ry / pow(d,3) ;
+            P[i].GravAccel[2] -= rz / pow(d,3) ;
         }
-        if(r <= 0.15)
+        if(r <= 0.35)
         {
-            /*P[i].GravAccel[0] -= rx*pow(r/0.15,2) / pow(r,3) ;
-            P[i].GravAccel[0] += rx*(0.15-r)/0.15 / pow(r,3) ;
-            P[i].GravAccel[1] -= ry*pow(r/0.15,2) / pow(r,3) ;
-            P[i].GravAccel[1] += ry*(0.15-r)/0.15 / pow(r,3) ;
-            P[i].GravAccel[2] -= rz*pow(r/0.15,2) / pow(r,3) ;
-            P[i].GravAccel[2] += rz*(0.15-r)/0.15 / pow(r,3) ;*/
-            P[i].GravAccel[0] -= 0 ;
-            P[i].GravAccel[1] -= 0 ;
-            P[i].GravAccel[2] -= 0 ;
+            P[i].GravAccel[0] -= rx*pow(r/0.35,2) / pow(d,3) ;
+            P[i].GravAccel[0] += rx*(0.35-r)/0.35 / pow(d,3) ;
+            P[i].GravAccel[1] -= ry*pow(r/0.35,2) / pow(d,3) ;
+            P[i].GravAccel[1] += ry*(0.35-r)/0.35 / pow(d,3) ;
+            P[i].GravAccel[2] -= rz*pow(r/0.35,2) / pow(d,3) ;
+            P[i].GravAccel[2] += rz*(0.35-r)/0.15 / pow(d,3) ;
             
         }
+        P[i].GravAccel[0] *= G * M;
+        P[i].GravAccel[1] *= G * M;
+        P[i].GravAccel[2] *= G * M;
         /*if(r >= 25.1)
         {
             P[i].GravAccel[0] -= rx*(1+(r-25.1)/0.1) / pow(r,3) ;
             P[i].GravAccel[1] -= ry*(1+(r-25.1)/0.1) / pow(r,3) ;
             P[i].GravAccel[2] -= rz*(1+(r-25.1)/0.1) / pow(r,3) ;
-        }*/
-        P[i].GravAccel[0] *= G;
-        P[i].GravAccel[1] *= G;
-        P[i].GravAccel[2] *= G;        
+        }*/           
     }
 }
 
