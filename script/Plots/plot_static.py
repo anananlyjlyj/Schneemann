@@ -29,14 +29,14 @@ class plot_single:
                 exec("self.%s = %.10f" % (li[0],float(li[1])))
                 
         self.mu = 2.3;     # mean molecular mass
-        self.gamma_eos = 1.001#(5./3.)           # polytropic index of ideal equation of state the run will assume
+        self.gamma_eos = 1.0001#(5./3.)           # polytropic index of ideal equation of state the run will assume
 
         # G = 6.6743e-11 m3 kg-1 s-2 *(UnitMass_in_g/1000)/(UnitLength_in_cm/100*(UnitVelocity_in_cm_per_s/100)**2)
         self.k_B = 1.38064852e-23/((self.UnitVelocity_in_cm_per_s/100)**2 * (self.UnitMass_in_g/1000))   # 1.38064852e-23 m2 kg s-2 K-1
         self.proton_mass = 1.6726219e-27/(self.UnitMass_in_g/1000);                 self.mean_molecular_weight = self.mu*self.proton_mass
-        self.r_i = 5.0;   self.r_o = 20.;  self.m_disk = 0.1
+        self.r_i = 0.5;   self.r_o = 2.0;  self.m_disk = 0.1
         self.star = [50, 50, 50];  self.m_star = 1
-        self.Sigma_0 = self.m_disk/(2*np.pi*(self.r_o-self.r_i));      self.power = -1
+        self.Sigma_0 = self.m_disk/(2*np.pi*(self.r_o-self.r_i));      self.power = -1.5
 
         self.fname = str(format(i, '03d'));   self.time = i*self.TimeBetSnapshot * (self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
         f = h5py.File("/u/yali/"+folder+"/test/output"+output+"/snapshot_"+self.fname+".hdf5", 'r') # Read-only access to the file
@@ -150,7 +150,7 @@ class plot_single:
             arr = self.height[((self.rad - a <= eps_rad/2)&(a - self.rad< eps_rad/2)) & ((self.phi-b <= eps_phi/2)&(b-self.phi< eps_phi/2))]
             if len(arr) == 0:
                 return 0
-            return len(arr)*(0.1/250000)/(np.pi*((a + eps_rad/2)**2-(a - eps_rad/2)**2)*(eps_phi/(2*np.pi)))
+            return len(arr)*(0.1/200000)/(np.pi*((a + eps_rad/2)**2-(a - eps_rad/2)**2)*(eps_phi/(2*np.pi)))
         
         def grid_qty(qty, a, b):   
             arr1 = getattr(self, qty)
